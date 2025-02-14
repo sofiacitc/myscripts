@@ -1,6 +1,5 @@
 import sys
-import os
-import subprocess
+import re
 from biblioteca import *
 
 def main():
@@ -38,6 +37,51 @@ def main():
 
     # Imprime cabecera de la tabla
     ejecuta(f'echo -e "REF_ISO\t\tMTI\tTC6_R\t\t\tTC6_E\t\t\tTC6_Igual" > "{OUTPUT_FILE}"')
+
+    with open('files/tcp-r', 'r') as file:
+        for linea in file:
+
+            # Busquedas en el archivo de transacciones recibidas
+            with open('files/linea_tmp', 'w') as tmp_file:
+                tmp_file.write(linea)
+            
+            desciso_busca = ejecuta('desciso -s files/linea_tmp')
+            # Extraer el número de referencia ISO (DE 37)
+            match = re.search(r'DE 37\s+"\d{12}', desciso_busca.stdout)
+            REF_ISO = match.group().split('"')[1]
+            # Extraer el Tipo de Mensaje
+            match = re.search(r'MTI\s+"\K[0-9]{4}', desciso_busca.stdout)
+            MTI = match.group().split('"')[1]
+            # Extraer el Token C6 recibido
+            match = re.search(r'DE 63\.C6\s+"! C600080 \K[a-zA-Z0-9]+', desciso_busca.stdout)
+            if match:
+                TC6_R = match.group().split('"')[1]
+            else:
+                TC6_R = "N/A"
+
+            # Busquedas en el archivo de transacciones enviadas
+            desciso_busca = ejecuta(f'desciso files/tcp-e -s -f"37=={REF_ISO}"')
+            # Extraer el Token C6 enviado
+            match = re.search(r'DE 63\.C6\s+"! C600080 \K[a-zA-Z0-9]+', desciso_busca.stdout)
+            if match:
+                TC6_E = match.group().split('"')[1]
+            else:
+                TC6_E = "N/A"
+
+            # Comparacion de valores
+            TC6_Igual = TC6_R == TC6_E
+
+            #Guardar en el archivo
+            resultado = f"{REF_ISO}\t{MTI}\t{TC6_R}\t{TC6_E}\t{TC6_Igual}"
+            print(resultado)
+            with open(OUTPUT_FILE, 'a') as file:
+                file.write(resultado + '\n')
+
+    # Remover archivos temporales
+    if not DEBUG:
+        ejecuta("rm files/tcp-r")
+        ejecuta("rm files/tcp-e")
+        ejecuta("rm files/linea_tmp")
 
 if __name__ == "__main__":
     main()

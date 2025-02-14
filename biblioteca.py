@@ -8,6 +8,8 @@ YEAR          = 2025             # Año Fijo
 BIT_INVALIDA  = "NaN"
 DEBUG         = False            # Bandera que decide si es DEBUG o no
 
+
+## @brief Le dice al usuario que no debe ejecutar la biblioteca directamente
 def main():
     print("""
 Esta es una biblioteca
@@ -26,10 +28,18 @@ def debug_log(msg):
 
 ## @brief Ejecuta un comando en Linux
 #  @param comando Recibe el comando a ejecutar en linux.
+#  @return Si se usa en una asignación, retorna la salida del comando. De lo contrario, solo lo ejecuta.
 def ejecuta(comando):
-    debug_log(comando)
-    subprocess.run(comando, shell=True, check=True)
+    debug_log(f'[EJECUTA]: {comando}')
+    # Ejecutar el comando
+    resultado = subprocess.run(comando, shell=True, text=True, capture_output=True)
 
+    # Si el comando se usa como una expresión, devolvemos su salida
+    if resultado.stdout.strip() or resultado.stderr.strip():
+        return resultado.stdout.strip()
+
+    # Si no se usa como expresión, no devuelve nada (como el comportamiento original)
+    return None
 
 ## @brief Obtiene fecha en formato Mes a partir de MMDD
 #  @param MMDD fecha en formato MMDD , ejemplo: 1227
